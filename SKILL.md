@@ -80,8 +80,13 @@ behaviorally read-only review и ровно один verdict: `ship`, `fix-first
 Завершение задачи требует по порядку: успешной primary verification и нового verdict
 Sol `ship`.
 
-Если publication не запрашивалась, зафиксируй terminal outcome штатной командой
+Если publication не запрашивалась и это managed Git task с существующей task-overlay
+записью и явно non-read-only режимом, зафиксируй terminal outcome штатной командой
 `python3 "$HOME/.codex/skills/agent-flow/scripts/task-overlay.py" finish --repo <repo> --task-id <task-id> --status done --completion-reason no-publication-requested`. Затем штатный helper сам пытается доказать disposable или equivalent sandbox: удаляет его только при proof, иначе автоматически сохраняет retained task overlay с reason code. Это безопасный завершённый исход, не ручное действие пользователя.
+
+Для read-only, non-Git задач и задач без существующей task-overlay записи lifecycle-мутация
+не требуется и не предлагается: зафиксируй безопасный no-op/reporting outcome, описав
+результат проверки и отсутствие lifecycle-действия.
 
 Для запрошенной publication требуются доказанные gate из `verified_push.py check` и
 требуемая авторизация перед `execute`; `task-overlay cleanup-published` допустим только
