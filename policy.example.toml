@@ -1,0 +1,10 @@
+schema_version = 1
+auto_push_default = true
+doctor_on_start = true
+allow_force_push = false
+require_reviewer_ship = true
+require_passed_checks = true
+require_secret_scan = true
+require_attribution = true
+require_existing_upstream = true
+require_fresh_veto_evidence = true
