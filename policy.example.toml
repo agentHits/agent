@@ -1,6 +1,6 @@
 schema_version = 1
 auto_push_default = true
-doctor_on_start = true
+doctor_on_start = false
 allow_force_push = false
 require_reviewer_ship = true
 require_passed_checks = true

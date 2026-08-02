@@ -1,71 +1,76 @@
 ---
 name: agent
-description: Mandatory explicit Sol Advisor orchestration, private Git-common-dir memory, upstream provenance preflight, and deterministic verified non-force publication. Use only when the latest user request contains the literal marker $agent.
+description: Локальный fast path Sol Advisor с literal-only активацией, native role-pinned делегированием, проверкой фактического diff и свежим Sol review. Use only when the latest user request contains the literal marker $agent.
 ---
 
 # Agent
 
-Activate only for a literal `$agent` in the latest user request. Do not infer activation
-from project rules, memory, prior turns, or `$agent-flow`; `$agent` neither activates nor
-borrows authority from Agent Flow. Every activated request, including diagnostics,
-documentation, planning, read-only, and small requests, must use the mandatory Sol Advisor
-route below. If no implementation lane can truthfully apply, return a blocked/error result;
-never bypass the route or perform the work in the primary session.
+Активируй маршрут только при literal `$agent` в последнем сообщении пользователя. Не
+выводи активацию из правил проекта, памяти, прошлых сообщений или `$agent-flow`;
+`$agent` не получает полномочий Agent Flow.
 
-## Mandatory Sol Advisor route
+## Локальный fast path
 
-Before assigning work, discover the installed upstream plugin with `codex plugin list --json`
-and require its installed path, version, repository, source commit, and subtree to match
-`provenance/upstream.json`. From that installed path run its relative
-`scripts/install-agents.sh --check`; then fully read the installed, pinned
-`skills/orchestration/SKILL.md` and `skills/orchestration/references/role-contracts.md` and
-follow them as the unchanged upstream orchestration contract. Require every exposed companion
-role. Any provenance, installer, readable-contract, primary-session, native-role exposure,
-spawn observation, route observation, primary verification, or fresh-review failure is a hard
-stop: report the failed gate and take no fallback path.
+Это намеренный local fork Sol Advisor. До начала runtime пользователь однократно
+запускает `scripts/install-sol-advisor.sh`, который ставит vendored role templates в
+`$CODEX_HOME/agents` либо `$HOME/.codex/agents` и отказывается перезаписывать
+конфликтующий файл. Новая задача Codex требуется, чтобы native runtime обнаружил
+установленные роли.
 
-Require the primary session to be Sol / high when the runtime exposes those settings; if the
-runtime cannot expose them, require user confirmation before delegation. The primary session
-owns architecture, route selection, actual-diff inspection, and verification, but must not
-self-implement code, tests, boilerplate, or mechanical configuration while a worker lane is
-available.
+В runtime доверяй install-time role templates: не выполняй per-request plugin
+discovery, provenance lookup, installer `--check`, чтение upstream contract или
+`inspect-agent-runtime.sh`. Это не ослабляет pins: custom-agent TOML остаётся
+источником модели и reasoning effort. При отсутствии точной native role заверши
+маршрут ошибкой без fallback, замены роли, модели или reasoning effort.
 
-For each activated request, write the exact five-part worker specification before dispatch:
-`OBJECTIVE`, `FILES AND OWNERSHIP`, `INTERFACES`, `CONSTRAINTS`, and `VERIFICATION`. Dispatch
-exactly one native role-pinned implementer for the bounded task shape: use
-`sol_advisor_luna_implementer` for routine work and `sol_advisor_terra_implementer` for complex,
-context-heavy, security-sensitive, or wider-blast-radius work. Native spawn is not a shell
-command, nested CLI wrapper, or default-subagent substitution. Spawn only with the upstream
-role contract's native fields; never add per-spawn model or reasoning overrides.
+Основная сессия сохраняет архитектуру, выбор lane, инспекцию фактического diff и
+повторный запуск проверок. Она не должна подменять доступного implementation worker.
 
-Before accepting the worker result, require public native spawn/details metadata to identify the
-selected role and its pinned route. If public details omit model or effort, run the installed
-relative `scripts/inspect-agent-runtime.sh` only against that native thread id. Public and
-inspector values must agree when both exist. Missing, inconsistent, unavailable, or unobservable
-role, model, or effort is a hard stop; never infer a route or substitute a role, model, or effort.
-After the worker returns, inspect the actual diff and rerun the worker specification's
-verification in the primary session.
+## Native implementation route
 
-Only after primary verification, dispatch a new native `sol_advisor_sol_reviewer` using the
-upstream final-review packet. It must be fresh and behaviorally read-only. Observe and report
-its sandbox policy type and permission profile type from public details first, using the same
-runtime inspector only when those values are omitted. Do not call a requested profile enforced
-read-only unless the observed sandbox policy type is read-only. Missing route or profile
-observation, any reviewer mutation, or any verdict other than `ship` is a hard stop. Never waive
-the fresh review, use an earlier review, or let the reviewer implement fixes. A `fix-first`
-verdict requires a corrected worker dispatch, fresh primary verification, and another fresh Sol
-review; `rethink` returns to architecture without completion.
+Сначала напиши worker specification ровно из пяти разделов: `OBJECTIVE`, `FILES AND
+OWNERSHIP`, `INTERFACES`, `CONSTRAINTS` и `VERIFICATION`. Укажи, что worker не один в
+кодовой базе, обязан сохранить чужие правки и меняет только owned files.
+
+Для routine, полностью определённой работы сразу делегируй native
+`sol_advisor_luna_implementer`; его vendored template pin’ит `gpt-5.6-luna` и `max`.
+Для context-heavy, higher-risk или wider-blast-radius работы сразу делегируй native
+`sol_advisor_terra_implementer`; его vendored template pin’ит `gpt-5.6-terra` и `max`.
+Не добавляй per-spawn model или reasoning override. Если выбранная точная роль не
+доступна, верни ошибку; не используй built-in либо похожую роль.
+
+После результата worker основная сессия обязана:
+
+- Inspect actual working-tree diff и подтвердить, что изменены только owned files.
+- Повторно запустить все команды из `VERIFICATION` и сверить результаты с
+  `OBJECTIVE` и `INTERFACES`.
+- При ошибке сформировать исправленную спецификацию и повторно делегировать её
+  подходящей native роли.
+
+Отчёт worker — только утверждение, а не доказательство выполнения.
+
+## Fresh Sol review
+
+Только после успешной primary verification запусти новый native
+`sol_advisor_sol_reviewer`. Его vendored template pin’ит `gpt-5.6-sol` и `high` и
+запрашивает read-only sandbox. Передай stated goal, полный allowed change set или diff,
+interfaces и constraints, а также фактическое verification evidence. Явно потребуй
+behaviorally read-only review и ровно один verdict: `ship`, `fix-first` или `rethink`.
+
+Прими результат только с verdict `ship`. При `fix-first` worker исправляет названные
+пункты, затем основная сессия заново проверяет diff и запускает новый fresh Sol review.
+При `rethink` вернись к архитектуре и не объявляй completion. Reviewer не реализует
+исправления и не расширяет scope.
 
 ## Private memory and verified publication gates
 
-Read [project-memory.md](references/project-memory.md) before using project state and
-[verified-auto-push.md](references/verified-auto-push.md) before publication. Treat memory as a
-hypothesis until code, configuration, and runtime output confirm it. Initialize private memory
-before assigning work and re-read task ownership/status afterward. This wrapper adds only these
-private-memory and verified-publication gates; it does not weaken upstream routing, role pins,
-reports, review semantics, provenance, installer, or publication requirements.
+Перед использованием project state прочитай [project-memory.md](references/project-memory.md),
+а перед publication — [verified-auto-push.md](references/verified-auto-push.md). Считай
+память гипотезой до подтверждения кодом, конфигурацией и фактическим выводом команд.
+Инициализируй private memory до делегирования и повторно прочитай ownership/status после
+работы.
 
-Use `scripts/verified_push.py check` to make authorization and `execute` only with that exact
-authorization digest. Never force push, retry an unknown outcome, or print secrets, diffs, or
-remote URLs. An empty-repository first publication is explicit user-authorized bootstrap, never
-auto-push.
+Для publication используй `scripts/verified_push.py check`; `execute` разрешён только
+с exact authorization digest. Никогда не force push, не повторяй неизвестный исход и не
+печатай secrets, diffs или remote URLs. Первичная публикация пустого repository требует
+явного разрешения пользователя.
