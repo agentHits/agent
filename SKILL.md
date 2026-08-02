@@ -1,13 +1,13 @@
 ---
 name: agent
-description: Локальный fast path Sol Advisor с literal-only активацией, native role-pinned делегированием, проверкой фактического diff и свежим Sol review. Use only when the latest user request contains the literal marker $agent.
+description: Локальный Sol Advisor fast path по умолчанию для задач: native role-pinned делегирование, проверка фактического diff и свежий Sol review. Literal $agent остаётся совместимым явным триггером.
 ---
 
 # Agent
 
-Активируй маршрут только при literal `$agent` в последнем сообщении пользователя. Не
-выводи активацию из правил проекта, памяти, прошлых сообщений или `$agent-flow`;
-`$agent` не получает полномочий Agent Flow.
+Для задач по умолчанию активируй этот локальный маршрут Sol Advisor. Literal `$agent`
+остаётся совместимым явным триггером. Не выводи из него полномочия Agent Flow:
+`$agent` не получает их сам по себе.
 
 ## Локальный fast path
 
@@ -74,3 +74,19 @@ behaviorally read-only review и ровно один verdict: `ship`, `fix-first
 с exact authorization digest. Никогда не force push, не повторяй неизвестный исход и не
 печатай secrets, diffs или remote URLs. Первичная публикация пустого repository требует
 явного разрешения пользователя.
+
+## Completion contract
+
+Завершение задачи требует по порядку: успешной primary verification и нового verdict
+Sol `ship`.
+
+Если publication не запрашивалась, зафиксируй terminal outcome штатной командой
+`python3 "$HOME/.codex/skills/agent-flow/scripts/task-overlay.py" finish --repo <repo> --task-id <task-id> --status done --completion-reason no-publication-requested`. Затем штатный helper сам пытается доказать disposable или equivalent sandbox: удаляет его только при proof, иначе автоматически сохраняет retained task overlay с reason code. Это безопасный завершённый исход, не ручное действие пользователя.
+
+Для запрошенной publication требуются доказанные gate из `verified_push.py check` и
+требуемая авторизация перед `execute`; `task-overlay cleanup-published` допустим только
+после подтверждённой publication. Не обещай безусловное удаление и не используй
+`rm -rf` или force push.
+
+При mismatch, dirty state или неполном proof не объявляй completion: выполни repair,
+либо retained task overlay до получения доказательств.
